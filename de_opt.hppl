@@ -1,0 +1,137 @@
+//Calculates the minima of a given symbolic multivariable function
+//using differential evolution technique from:
+//S.Das and P.N.Suganthan,
+//Differential Evolution: A Survey of the State-of-the-Art, IEEE
+//Transactions on Evolutionary Computation, vol. 15, no. 1, pp. 4-31,
+//2011
+
+//Algorithm is from the book:
+// Algorithms for Optimization, Kochenderfer & Wheeler, 2019 MIT Press
+// pp.157
+
+//-------------------------------Input--------------------------------
+//ff:    Function as a string with v(1), v(2), v(3) so on.
+//ul_b:  Upper and lower boundaries for an each variable as a list
+//k_max: Number of iterations
+//pp:    Crossover probability
+//ww:    A differential weight
+//pop:   A population size
+//--------------------------------------------------------------------
+
+EXPORT de_opt()
+BEGIN
+
+LOCAL ff:="((v(1)^2+v(2)-11)^2+(v(1)+v(2)^2-7)^2)";
+LOCAL ul_b:={{5,-5},{5,-5}};
+LOCAL k_max:=50;
+LOCAL pp:=0.5;
+LOCAL ww:=1;
+LOCAL v:={};
+LOCAL vp:={};
+
+LOCAL kk,ii;
+LOCAL jj;
+LOCAL nn;
+LOCAL population:={},pop_size:=50;
+LOCAL eval_ff1;
+LOCAL rand3:={};
+LOCAL aa:={},bb:={},cc:={},zz:={};
+LOCAL xxp:={},xx:={};
+LOCAL xxp_value,xx_value;
+LOCAL jrand;
+LOCAL min_value;
+LOCAL min_index;
+
+INPUT({{ff,[2],{15,85,0}},
+       {ul_b,[6],{15,85,1}},
+       {k_max,[0],{15,20,2}},
+       {pp,[0],{50,20,2}},
+       {ww,[0],{80,20,2}},
+       {pop_size,[0],{15,20,3}}
+       }, 
+       "Differentian Evolution");
+
+// Number of the variables
+nn:=size(ul_b); 
+
+//Min. population size > 1
+IF pop_size==1 THEN
+ PRINT();
+ PRINT("Population must be >1");
+ KILL;
+END;
+
+//Create the population for a given population size
+//and upper/lower boundaries
+FOR ii FROM 1 TO pop_size DO
+   FOR kk FROM 1 TO nn DO
+     population(ii,kk):=RANDOM(ul_b(kk,2),ul_b(kk,1));
+   END;
+END;
+
+//Find the minimum of the population 
+FOR kk FROM 1 TO k_max DO
+ FOR ii FROM 1 TO pop_size DO
+   rand3:=RANDINT(3,1,pop_size);
+    WHILE rand3(1)≠ii AND rand3(2)≠ii AND rand3(3)≠ii DO
+     rand3:=RANDINT(3,1,pop_size);
+    END;
+    aa:=population(rand3(1));
+    bb:=population(rand3(2));
+    cc:=population(rand3(3));
+    //Interim design
+    zz:=aa + ww*(bb-cc);
+    jrand:=RANDINT(1,nn);
+    //Current design
+    xx:=population(ii);
+    //Crossover
+    FOR jj FROM 1 TO nn DO
+     IF jj == jrand OR RANDOM()<pp THEN
+       xxp(jj):=zz(jj);
+     ELSE
+       xxp(jj):=xx(jj);
+     END; 
+    END;
+    //Prevent the violation of upper and lower boundaries
+    FOR jj FROM 1 TO nn DO
+    CASE
+     IF xxp(jj)>ul_b(jj,1) THEN xxp(jj):=ul_b(jj,1); END;
+     IF xxp(jj)<ul_b(jj,2) THEN xxp(jj):=ul_b(jj,2); END;
+    END;
+    END;
+    v:=xx;
+    eval_ff1:=CAS.expr(ff);
+    xx_value:=CAS.evalf(eval_ff1);
+    v:=xxp;
+    eval_ff1:=CAS.expr(ff);
+    xxp_value:=CAS.evalf(eval_ff1);
+    //Choose the better design for next generation
+    IF xxp_value<xx_value THEN
+     population(ii):=xxp;
+    END;
+ END;
+END;
+
+//Min arg and value
+min_index:=1;
+v:=population(min_index);
+eval_ff1:=CAS.expr(ff);
+min_value:=CAS.evalf(eval_ff1);
+
+FOR ii FROM 2 TO pop_size DO
+  v:=population(ii);
+  eval_ff1:=CAS.expr(ff);
+  xx_value:=CAS.evalf(eval_ff1);
+  IF xx_value<min_value THEN
+     min_value:=xx_value;
+     min_index:=ii;
+  END
+END;
+
+//Output the possible minimum
+PRINT();
+PRINT("Min value: " + min_value);
+PRINT("Min arg: ");
+PRINT(population(min_index));
+
+END;
